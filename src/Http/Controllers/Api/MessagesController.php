@@ -134,7 +134,7 @@ class MessagesController extends Controller
             // send to database
             $message = Chatify::newMessage([
                 'type' => $request['type'],
-                'from_id' => Auth::guard('sanctum')->user()->id,
+                'from_id' => Auth::guard('sanctum')->user()->id ?? $request->user('sanctum')->id,
                 'to_id' => $request['id'],
                 'body' => htmlentities(trim($request['message']), ENT_QUOTES, 'UTF-8'),
                 'sent_by' => 'user',
