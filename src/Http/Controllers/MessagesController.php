@@ -139,6 +139,7 @@ class MessagesController extends Controller
             $message = Chatify::newMessage([
                 'from_id' => Auth::user()->id,
                 'to_id' => $request['id'],
+                'section_id' => $request['section_id'],
                 'body' => htmlentities(trim($request['message']), ENT_QUOTES, 'UTF-8'),
                 'sent_by' => 'admin',
                 'attachment' => ($attachment) ? json_encode((object)[
@@ -147,9 +148,10 @@ class MessagesController extends Controller
                 ]) : null,
             ]);
             $messageData = Chatify::parseMessage($message);
-            Chatify::push("private-chatify." . $request['id'], 'messaging', [
+            Chatify::push("private-chatify." . $request['section_id'] . "." . $request['id'], 'messaging', [
                 'from_id' => Auth::user()->id,
                 'to_id' => $request['id'],
+                'section_id' => $request['section_id'],
                 'message' => $messageData,
             ]);
         }
@@ -171,7 +173,7 @@ class MessagesController extends Controller
      */
     public function fetch(Request $request)
     {
-        $query = Chatify::fetchMessagesQuery($request['id'], Auth::user()->id)->latest();
+        $query = Chatify::fetchMessagesQuery($request['id'], Auth::user()->id, $request->section_id)->latest();
         $messages = $query->paginate($request->per_page ?? $this->perPage);
         $totalMessages = $messages->total();
         $lastPage = $messages->lastPage();
@@ -234,6 +236,9 @@ class MessagesController extends Controller
                 $q->where('ch_messages.from_id', Auth::user()->id)
                     ->orWhere('ch_messages.to_id', Auth::user()->id);
             })
+            ->when($request->section_id, function  ($q) use ($request) {
+                $q->where('section_admin_id', $request->section_id);
+            })
             // ->where('customers.id','!=',Auth::user()->id)
             ->select('customers.id', 'customers.name', DB::raw('MAX(ch_messages.created_at) max_created_at'))
             ->orderBy('max_created_at', 'desc')
@@ -245,7 +250,7 @@ class MessagesController extends Controller
         if (count($usersList) > 0) {
             $contacts = '';
             foreach ($usersList as $user) {
-                $contacts .= Chatify::getContactItem($user);
+                $contacts .= Chatify::getContactItem($user, $request->section_id);
             }
         } else {
             $contacts = '<p class="message-hint center-el"><span>Your contact list is empty</span></p>';
@@ -272,7 +277,7 @@ class MessagesController extends Controller
                 'message' => 'User not found!',
             ], 401);
         }
-        $contactItem = Chatify::getContactItem($user);
+        $contactItem = Chatify::getContactItem($user, $request->section_id);
 
         // send the response
         return Response::json([
@@ -362,7 +367,7 @@ class MessagesController extends Controller
      */
     public function sharedPhotos(Request $request)
     {
-        $shared = Chatify::getSharedPhotos($request['user_id']);
+        $shared = Chatify::getSharedPhotos($request['user_id'], $request['section_id']);
         $sharedPhotos = null;
 
         // shared with its template
@@ -387,7 +392,7 @@ class MessagesController extends Controller
     public function deleteConversation(Request $request)
     {
         // delete
-        $delete = Chatify::deleteConversation($request['id']);
+        $delete = Chatify::deleteConversation($request['id'], $request['section_id']);
 
         // send the response
         return Response::json([

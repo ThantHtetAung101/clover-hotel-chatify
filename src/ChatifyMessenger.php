@@ -198,11 +198,16 @@ class ChatifyMessenger
      * @param int $user_id
      * @return Message|\Illuminate\Database\Eloquent\Builder
      */
-    public function fetchMessagesQuery($user_id, $auth_id = 1)
+    public function fetchMessagesQuery($user_id, $auth_id = 1, $sectionId = null)
     {
-        return Message::where('from_id', $auth_id)->where('to_id', $user_id)
-            ->orWhere('from_id', $user_id)->where('to_id', $auth_id);
+        return Message::where(function ($query) use ($user_id, $auth_id) {
+            $query->where('from_id', $auth_id)->where('to_id', $user_id)
+                ->orWhere('from_id', $user_id)->where('to_id', $auth_id);
+        })->when($sectionId, function ($q) use ($sectionId) {
+            return $q->where('section_admin_id', $sectionId);
+        });
     }
+
 
     /**
      * create a new message to database
@@ -215,6 +220,7 @@ class ChatifyMessenger
         $message = new Message();
         $message->from_id = $data['from_id'];
         $message->to_id = $data['to_id'];
+        $message->section_admin_id = $data['section_id'];
         $message->body = $data['body'];
         $message->sent_by = $data['sent_by'];
         $message->attachment = $data['attachment'];
@@ -244,9 +250,9 @@ class ChatifyMessenger
      * @param int $user_id
      * @return Message|Collection|\Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Eloquent\Model|object|null
      */
-    public function getLastMessageQuery($user_id)
+    public function getLastMessageQuery($user_id, $section_id)
     {
-        return $this->fetchMessagesQuery($user_id, Auth::user()->id)->latest()->first();
+        return $this->fetchMessagesQuery($user_id, Auth::user()->id, $section_id)->latest()->first();
     }
 
     /**
@@ -268,11 +274,11 @@ class ChatifyMessenger
      * @param Collection $user
      * @return string
      */
-    public function getContactItem($user)
+    public function getContactItem($user, $section_id)
     {
         try {
             // get last message
-            $lastMessage = $this->getLastMessageQuery($user->id);
+            $lastMessage = $this->getLastMessageQuery($user->id, $section_id);
             // Get Unseen messages counter
             $unseenCounter = $this->countUnseenMessages($user->id);
             if ($lastMessage) {
@@ -350,11 +356,11 @@ class ChatifyMessenger
      * @param int $user_id
      * @return array
      */
-    public function getSharedPhotos($user_id)
+    public function getSharedPhotos($user_id, $section_id)
     {
         $images = array(); // Default
         // Get messages
-        $msgs = $this->fetchMessagesQuery($user_id, Auth::user()->id)->orderBy('created_at', 'DESC');
+        $msgs = $this->fetchMessagesQuery($user_id, Auth::user()->id, $section_id)->orderBy('created_at', 'DESC');
         if ($msgs->count() > 0) {
             foreach ($msgs->get() as $msg) {
                 // If message has attachment
@@ -375,10 +381,10 @@ class ChatifyMessenger
      * @param int $user_id
      * @return boolean
      */
-    public function deleteConversation($user_id)
+    public function deleteConversation($user_id, $section_id)
     {
         try {
-            foreach ($this->fetchMessagesQuery($user_id, Auth::user()->id)->get() as $msg) {
+            foreach ($this->fetchMessagesQuery($user_id, Auth::user()->id, $section_id)->get() as $msg) {
                 // delete file attached if exist
                 if (isset($msg->attachment)) {
                     $path = config('chatify.attachments.folder') . '/' . json_decode($msg->attachment)->new_name;

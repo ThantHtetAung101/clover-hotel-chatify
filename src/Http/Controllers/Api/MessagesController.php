@@ -149,9 +149,10 @@ class MessagesController extends Controller
 
             // send to user using pusher
             // if (Auth::guard('sanctum')->user()->id != $request['id']) {
-            Chatify::push("private-chatify." . $request['id'], 'messaging', [
+            Chatify::push("private-chatify." . $request['section_id'] . "." . $request['id'], 'messaging', [
                 'from_id' => Auth::guard('sanctum')->user()->id,
                 'to_id' => $request['id'],
+                'section_id' => $request['section_id'],
                 'message' => Chatify::messageCard($messageData, true)
             ]);
             // }
@@ -236,6 +237,9 @@ class MessagesController extends Controller
             ->where(function ($q) {
                 $q->where('ch_messages.from_id', Auth::guard('sanctum')->user()->id)
                     ->orWhere('ch_messages.to_id', Auth::guard('sanctum')->user()->id);
+            })
+            ->when($request->section_id, function  ($q) use ($request) {
+                $q->where('section_admin_id', $request->section_id);
             })
             ->where('users.id', '!=', Auth::guard('sanctum')->user()->id)
             ->select('users.*', DB::raw('MAX(ch_messages.created_at) max_created_at'))

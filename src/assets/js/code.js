@@ -449,11 +449,13 @@ function sendMessage() {
  temporaryMsgId += 1;
  let tempID = `temp_${temporaryMsgId}`;
  let hasFile = !!$(".upload-attachment").val();
+ let sectionId = document.getElementById('section-id').value
  const inputValue = $.trim(messageInput.val());
  if (inputValue.length > 0 || hasFile || audioMessage) {
      const formData = new FormData($("#message-form")[0]);
      formData.append("id", getMessengerId());
      formData.append("temporaryMsgId", tempID);
+     formData.append("section_id", sectionId);
      if (audioMessage) {
          formData.append('audio_data', audioMessage, 'file');
          formData.append('type', 'audio');
@@ -554,6 +556,7 @@ function fetchMessages(id, newFetch = false) {
  }
  if (messenger != 0 && !noMoreMessages && !messagesLoading) {
      const messagesElement = messagesContainer.find(".messages");
+     const sectionId = document.getElementById('section-id').value
      setMessagesLoading(true);
      $.ajax({
          url: url + "/fetchMessages",
@@ -562,6 +565,7 @@ function fetchMessages(id, newFetch = false) {
              _token: csrfToken,
              id: id,
              page: messagesPage,
+             section_id: sectionId,
          },
          dataType: "JSON",
          success: (data) => {
@@ -628,14 +632,15 @@ function cancelUpdatingAvatar() {
 
 // subscribe to the channel
 const channelName = "private-chatify";
-var channel = pusher.subscribe(`${channelName}.${auth_id}`);
+const sectionId = document.getElementById('section-id').value
+var channel = pusher.subscribe(`${channelName}.${sectionId}.${auth_id}`);
 var clientSendChannel;
 var clientListenChannel;
 
 function initClientChannel() {
  if (getMessengerId()) {
-     clientSendChannel = pusher.subscribe(`${channelName}.${getMessengerId()}`);
-     clientListenChannel = pusher.subscribe(`${channelName}.${auth_id}`);
+     clientSendChannel = pusher.subscribe(`${channelName}.${sectionId}.${getMessengerId()}`);
+     clientListenChannel = pusher.subscribe(`${channelName}.${sectionId}.${auth_id}`);
  }
 }
 initClientChannel();
@@ -893,11 +898,12 @@ function setContactsLoading(loading = false) {
 }
 function getContacts() {
  if (!contactsLoading && !noMoreContacts) {
+    const sectionId = document.getElementById('section-id').value
      setContactsLoading(true);
      $.ajax({
          url: url + "/getContacts",
          method: "GET",
-         data: { _token: csrfToken, page: contactsPage },
+         data: { _token: csrfToken, page: contactsPage, section_id: sectionId },
          dataType: "JSON",
          success: (data) => {
              setContactsLoading(false);
@@ -927,6 +933,7 @@ function getContacts() {
 *-------------------------------------------------------------
 */
 function updateContactItem(user_id) {
+ const sectionId = document.getElementById('section-id').value
  if (user_id != auth_id) {
      $.ajax({
          url: url + "/updateContacts",
@@ -934,6 +941,7 @@ function updateContactItem(user_id) {
          data: {
              _token: csrfToken,
              user_id,
+             section_id: sectionId,
          },
          dataType: "JSON",
          success: (data) => {
@@ -1019,10 +1027,11 @@ function getFavoritesList() {
 *-------------------------------------------------------------
 */
 function getSharedPhotos(user_id) {
+const sectionId = document.getElementById('section-id').value
  $.ajax({
      url: url + "/shared",
      method: "POST",
-     data: { _token: csrfToken, user_id: user_id },
+     data: { _token: csrfToken, user_id: user_id, section_id: sectionId },
      dataType: "JSON",
      success: (data) => {
          $(".shared-photos-list").html(data.shared);
@@ -1096,10 +1105,11 @@ function messengerSearch(input) {
 *-------------------------------------------------------------
 */
 function deleteConversation(id) {
+ const sectionId = document.getElementById('section-id').value
  $.ajax({
      url: url + "/deleteConversation",
      method: "POST",
-     data: { _token: csrfToken, id: id },
+     data: { _token: csrfToken, id: id, section_id: sectionId },
      dataType: "JSON",
      beforeSend: () => {
          // hide delete modal
