@@ -22,7 +22,7 @@ class MessagesController extends Controller
 
     /**
      * Authenticate the connection for pusher
-     *
+     *f
      * @param Request $request
      * @return JsonResponse
      */

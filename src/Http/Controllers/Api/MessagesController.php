@@ -134,8 +134,9 @@ class MessagesController extends Controller
             // send to database
             $message = Chatify::newMessage([
                 'type' => $request['type'],
-                'from_id' => Auth::guard('sanctum')->user()->id ?? $request->user('sanctum')->id,
+                'from_id' => Auth::guard('sanctum')->user()->id ?? $request->user('sanctum'),
                 'to_id' => $request['id'],
+                'section_id' => $request['section_id'],
                 'body' => htmlentities(trim($request['message']), ENT_QUOTES, 'UTF-8'),
                 'sent_by' => 'user',
                 'attachment' => ($attachment) ? json_encode((object)[
@@ -175,7 +176,7 @@ class MessagesController extends Controller
      */
     public function fetch(Request $request)
     {
-        $query = Chatify::fetchMessagesQuery($request['id'], $request['auth_id'])->latest();
+        $query = Chatify::fetchMessagesQuery($request['id'], $request['auth_id'], $request['section_id'])->latest();
         $messages = $query->paginate($request->per_page ?? $this->perPage);
         $decodedMessages = $messages->map(function ($message) {
             if ($message->attachment) {
@@ -238,7 +239,7 @@ class MessagesController extends Controller
                 $q->where('ch_messages.from_id', Auth::guard('sanctum')->user()->id)
                     ->orWhere('ch_messages.to_id', Auth::guard('sanctum')->user()->id);
             })
-            ->when($request->section_id, function  ($q) use ($request) {
+            ->when($request->section_id, function ($q) use ($request) {
                 $q->where('section_admin_id', $request->section_id);
             })
             ->where('users.id', '!=', Auth::guard('sanctum')->user()->id)
@@ -322,10 +323,10 @@ class MessagesController extends Controller
      */
     public function sharedPhotos(Request $request)
     {
-        $images = Chatify::getSharedPhotos($request['user_id']);
+        $images = Chatify::getSharedPhotos($request['user_id'], $request['section_id']);
 
-        foreach ($images as $key=>$image) {
-            $images[$key] = asset('image/public/'.config('chatify.attachments.folder') . '/' . $image);
+        foreach ($images as $key => $image) {
+            $images[$key] = asset('image/public/' . config('chatify.attachments.folder') . '/' . $image);
         }
         // send the response
         return Response::json([
@@ -342,7 +343,7 @@ class MessagesController extends Controller
     public function deleteConversation(Request $request)
     {
         // delete
-        $delete = Chatify::deleteConversation($request['id']);
+        $delete = Chatify::deleteConversation($request['id'], $request['section_id']);
 
         // send the response
         return Response::json([
